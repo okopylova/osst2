@@ -1,0 +1,6 @@
+Generic single-database configuration.
+
+Provides autogeneration migrations from model, based on difference between described model and current database structure.
+
+Use command:
+alembic revision --autogenerate -m "Your message here"

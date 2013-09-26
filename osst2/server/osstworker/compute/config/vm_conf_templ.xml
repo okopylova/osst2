@@ -1,0 +1,21 @@
+<domain type='qemu'>
+  <name>{vmname}</name>
+  <memory>524288</memory>
+  <currentMemory>524288</currentMemory>
+  <vcpu>1</vcpu>
+  <os>
+    <type arch='x86_64' machine='pc'>hvm</type>
+  </os>
+  <devices>
+    <emulator>/usr/bin/qemu-system-x86_64</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='{imgpath}'/>
+      <target dev='hda'/>
+    </disk>
+    <interface type='bridge'>
+        <source bridge='br0'/>
+    </interface>
+    <graphics type='vnc' port='-1'/>
+  </devices>
+</domain>
