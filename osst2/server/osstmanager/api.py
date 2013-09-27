@@ -1,5 +1,5 @@
+#!/usr/bin/env python
 import pika
-#import uuid
 import json
 from webob import Request, Response
 from webob import exc
@@ -14,44 +14,27 @@ valid_methods = {
 
 class Manager(object):
 
-    def __init__(self):
+    def __init__(self, host):
         self.connection = pika.BlockingConnection(pika.
                                                   ConnectionParameters
-                                                  (host='localhost'))
+                                                  (host=host))
         self.channel = self.connection.channel()
-        result = self.channel.queue_declare(exclusive=True)
-        #self.callback_queue = result.method.queue
-        #self.channel.basic_consume(self.on_response, no_ack=True,
-        #                           queue=self.callback_queue)
-        #self.resp_waiting = {}
+        #result = self.channel.queue_declare(exclusive=True) TODO: check work
 
     def __call__(self, environ, start_response):
         req = Request(environ)
         resp = self.route_request(req)
         return resp(environ, start_response)
 
-    #def on_response(self, ch, method, props, body):
-    #    if props.correlation_id in self.resp_waiting:
-    #        self.resp_waiting[props.correlation_id] = body
-
-    def rpc(self, queue_name, method, args):
+    def send_msg(self, queue_name, method, args):
         self.response = None
-        #corr_id = str(uuid.uuid4())
-        #self.resp_waiting[corr_id] = None
         self.channel.basic_publish(exchange='',
                                    routing_key=queue_name,
-                                   #properties=pika.
-                                   #BasicProperties(reply_to=self.
-                                   #                callback_queue,
-                                   #                correlation_id=corr_id,),
                                    body=json.dumps({'method': method,
                                                     'args': args}),
-                                   properties=
-                                   pika.BasicProperties(delivery_mode = 2,))
-        #while self.resp_waiting[corr_id] is None:
-        #    self.connection.process_data_events()
-        #resp = self.resp_waiting[corr_id]
-        #return resp
+                                   properties=pika.BasicProperties
+                                   (delivery_mode=2,))
+        #TODO: put to db, return info from from db
         return 'ok'
 
     def route_request(self, req):
@@ -62,7 +45,7 @@ class Manager(object):
                 valid_methods[segments[2]][segments[3]] != req.method:
             resp = exc.HTTPBadRequest('Incorrect path or method')
         else:
-            resp = Response(self.rpc(segments[2], segments[3], req.json))
+            resp = Response(self.send_msg(segments[2], segments[3], req.json))
         return resp
 
 
@@ -71,7 +54,7 @@ def start_server():
     parser.add_argument('-host', default='localhost')
     parser.add_argument('-port', type=int, default=8080)
     args = parser.parse_args()
-    httpd = make_server(args.host, args.port, Manager())
+    httpd = make_server(args.host, args.port, Manager(args.host))
     print 'Started on http://%s:%s' % (args.host, args.port)
     try:
         httpd.serve_forever()

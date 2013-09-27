@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Manage VMs with CirrOS OS, based on existing VM disk image"""
 
 import os
@@ -8,8 +9,9 @@ import xml.etree.ElementTree as ET
 from os.path import expanduser, join
 import osstdb.dbhandler as dbhandler
 from osstdb.model import Instance
-from osstworker.network.network import assign_ip, exempt_ip
-import osstworker.rpcserver as rpcserver
+#from osstworker.network.network import assign_ip, exempt_ip
+from osstworker.rpcclient import RPCClient
+import osstworker.amqpserver as amqpserver
 
 
 driver = 'qemu:///system'
@@ -17,6 +19,9 @@ home = expanduser('~')
 base_disk_path = join(home, 'vm_disks')
 base_vm_img = '../data/base_vm_disk.img'
 vm_conf_templ_path = 'config/vm_conf_templ.xml'
+netw_queue = 'network'
+rpcclient = RPCClient('localhost')
+
 
 _conn = libvirt.open(driver)
 _vm_conf_template = open(vm_conf_templ_path).read()
@@ -44,7 +49,8 @@ def create(vmname, addr=None):
     xml = ET.fromstring(vm.XMLDesc(0))
     mac = xml.find('devices').find('interface').find('mac').attrib['address']
     vm_info = dbhandler.add_vm(vmname)
-    assign_ip(vm_info.id, mac, addr)
+    #assign_ip(vm_info.id, mac, addr)
+    rpcclient.call(netw_queue, 'assign_ip', vmid=vm_info.id, mac=mac, ip=addr)
     return 'VM %s created' % vmname
 
 
@@ -65,7 +71,8 @@ def delete(vmname, deldisk=True):
     dom.undefine()
     full_info = dbhandler.get_full_vm_info(vmname)
     if full_info.IPaddress:
-        exempt_ip(full_info.IPaddress.addr)
+        #exempt_ip(full_info.IPaddress.addr)
+        rpcclient.call(netw_queue, 'exempt_ip', ip=full_info.IPaddress.addr)
     dbhandler.delete_vm(vmname)
     if deldisk:
         os.remove(os.path.join(base_disk_path, dom.name() + '.img'))
@@ -110,5 +117,4 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='Starts network RPC server')
     parser.add_argument('-host', default='localhost')
     args = parser.parse_args()
-    rpcserver.start_rpc_server(args.host, 'compute',
-                               'osstworker.compute.compute')
+    amqpserver.start(args.host, 'compute', 'osstworker.compute.compute')

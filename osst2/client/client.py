@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''Client for osst VM manager API'''
 import argparse
 import urllib2

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 To use script, add this lines to your /etc/sudoers file:
 youruser ALL=NOPASSWD: /usr/bin/pkill
@@ -15,7 +16,7 @@ import os
 from osstdb import dbhandler
 from argparse import ArgumentParser
 from osstdb.model import IPaddress
-import osstworker.rpcserver as rpcserver
+import osstworker.amqpserver as amqpserver
 
 home = os.path.expanduser('~')
 hostsfile = 'config/dnsmasq_dhcp_hostsfile.conf'
@@ -97,5 +98,4 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='Starts network RPC server')
     parser.add_argument('-host', default='localhost')
     args = parser.parse_args()
-    rpcserver.start_rpc_server(args.host, 'network',
-                               'osstworker.network.network')
+    amqpserver.start(args.host, 'network', 'osstworker.network.network')
